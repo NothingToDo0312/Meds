@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { deviceTimezone } from "@/lib/client/time";
 import PasswordInput from "./PasswordInput";
+import ThemeToggle from "./ThemeToggle";
 
 const ROLE_HELP = {
   patient: "You manage your own medicines. Share your invite code to let a guardian follow along.",
@@ -218,6 +219,12 @@ export default function Account({ user, guardians, patients, toast, onUserChange
         <PatientSection user={user} guardians={guardians} toast={toast} onUserChange={onUserChange} onLinksChange={onLinksChange} />
       )}
       {user.role === "guardian" && <GuardianSection patients={patients} toast={toast} onLinksChange={onLinksChange} />}
+
+      <div className="card">
+        <h3>Appearance</h3>
+        <p className="muted help">Auto follows your device. This choice is saved on this device only.</p>
+        <ThemeToggle />
+      </div>
 
       <ChangePassword toast={toast} />
       <button className="btn ghost wide" onClick={onSignOut}>Sign out</button>

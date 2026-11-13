@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { deviceTimezone } from "@/lib/client/time";
 import PasswordInput from "./PasswordInput";
+import ThemeToggle from "./ThemeToggle";
 
 export default function AuthScreen({ setup, signupOpen, onAuthed }) {
   const [mode, setMode] = useState(setup ? "register" : "login");
@@ -30,6 +31,7 @@ export default function AuthScreen({ setup, signupOpen, onAuthed }) {
 
   return (
     <div className="auth">
+      <div className="auth-top"><ThemeToggle /></div>
       <h1>MediReminder</h1>
       <p className="muted">
         {setup ? "Welcome. Create the admin account to get started." : registering ? "Create your account." : "Sign in to continue."}

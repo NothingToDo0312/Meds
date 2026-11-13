@@ -1,26 +1,46 @@
 :root {
-  --bg: #fafaf9;
-  --surface: #fff;
-  --ink: #1c1917;
-  --muted: #78716c;
-  --line: #e7e5e4;
+  color-scheme: light;
+  --bg: #f4f7f6;
+  --surface: #ffffff;
+  --ink: #10201d;
+  --muted: #5b6b68;
+  --line: #dbe4e1;
   --accent: #0f766e;
-  --accent-ink: #fff;
+  --accent-ink: #ffffff;
+  --accent-soft: #e1f3f0;
   --danger: #b91c1c;
-  --radius: 10px;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgb(16 32 29 / .06), 0 4px 14px rgb(16 32 29 / .05);
 }
 
+/* Dark palette: used when the device is dark (unless Light is forced) or when Dark is forced. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #131211;
-    --surface: #1c1a19;
-    --ink: #f5f5f4;
-    --muted: #a8a29e;
-    --line: #2e2b29;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e1312;
+    --surface: #162120;
+    --ink: #edf4f2;
+    --muted: #9bafab;
+    --line: #26352f;
     --accent: #2dd4bf;
     --accent-ink: #042f2e;
+    --accent-soft: #13332f;
     --danger: #f87171;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 18px rgb(0 0 0 / .25);
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1312;
+  --surface: #162120;
+  --ink: #edf4f2;
+  --muted: #9bafab;
+  --line: #26352f;
+  --accent: #2dd4bf;
+  --accent-ink: #042f2e;
+  --accent-soft: #13332f;
+  --danger: #f87171;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 18px rgb(0 0 0 / .25);
 }
 
 * { box-sizing: border-box; }
@@ -188,9 +208,53 @@ form label.check input { display: inline-block; width: auto; margin: 0; }
 nav button { font-size: 14px; }
 
 /* ---- Show/Hide password toggle ---- */
-.pw { position: relative; display: block; }
-form label .pw input { padding-right: 64px; }
+.pw { position: relative; display: block; margin-top: 6px; }
+form label .pw input { margin-top: 0; padding-right: 68px; }
 .pw-toggle {
-  position: absolute; right: 6px; top: 6px; bottom: 0; margin: auto 0; height: 32px;
-  background: none; border: 0; padding: 0 10px; color: var(--accent); font-weight: 600; font-size: .85rem; cursor: pointer;
+  position: absolute; right: 6px; top: 0; bottom: 0; margin: auto 0; height: 32px;
+  background: var(--accent-soft); border: 0; border-radius: 8px; padding: 0 12px;
+  color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer;
 }
+.pw-toggle:hover { filter: brightness(.97); }
+
+/* ---- Design polish ---- */
+body { -webkit-font-smoothing: antialiased; transition: background-color .2s, color .2s; }
+h1 { letter-spacing: -.02em; }
+
+.card, .banner { box-shadow: var(--shadow); border-radius: var(--radius); }
+.card { padding: 16px 18px; }
+.card h3 { font-size: 15px; }
+
+input, select, textarea { transition: border-color .15s, box-shadow .15s; }
+form label input:focus, form label select:focus, .viewing select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+form label input::placeholder { color: var(--muted); opacity: .7; }
+
+.btn { transition: filter .15s, transform .05s; }
+.btn:hover:not(:disabled) { filter: brightness(1.07); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.ghost:hover:not(:disabled), .btn.danger:hover:not(:disabled) { background: var(--accent-soft); filter: none; }
+.link:hover { text-decoration: underline; }
+
+nav { box-shadow: 0 -4px 16px rgb(0 0 0 / .05); }
+nav button { transition: color .15s, background-color .15s; }
+nav button:hover { background: var(--accent-soft); }
+nav button.on { background: var(--accent-soft); }
+
+.item:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.chip { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+dialog { box-shadow: var(--shadow); }
+dialog::backdrop { background: rgb(0 0 0 / .5); backdrop-filter: blur(2px); }
+
+/* Sign-in screen */
+.auth form { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.auth-top { display: flex; justify-content: flex-end; margin-bottom: 28px; }
+.auth h1 { font-size: 30px; }
+
+/* Theme switch (Auto / Light / Dark) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; }
+.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+.card .seg { margin-top: 4px; }
