@@ -3,12 +3,32 @@ import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { deviceTimezone } from "@/lib/client/time";
 import PasswordInput from "./PasswordInput";
+import NotifySettings from "./NotifySettings";
+import InstallButton from "./InstallButton";
+import { useInstall } from "@/lib/client/install";
 
 const ROLE_HELP = {
   patient: "You manage your own medicines. Share your invite code to let a guardian follow along.",
   guardian: "You can view and manage the medicines of your linked patients, and create accounts for patients.",
   admin: "You manage users and can view any patient's schedule.",
 };
+
+// Shown only when this browser can install the app and it isn't installed yet.
+function InstallCard({ toast }) {
+  const { available } = useInstall();
+  if (!available) return null;
+  return (
+    <div className="card">
+      <div className="row-between install-row">
+        <div>
+          <h3>Install MediReminder</h3>
+          <p className="muted">Add it to your device for its own icon and window, and more reliable reminders.</p>
+        </div>
+        <InstallButton onDone={(o) => o === "accepted" && toast("MediReminder installed")} />
+      </div>
+    </div>
+  );
+}
 
 function ChangePassword({ toast }) {
   const [current, setCurrent] = useState("");
@@ -219,6 +239,9 @@ export default function Account({ user, guardians, patients, toast, onUserChange
         <PatientSection user={user} guardians={guardians} toast={toast} onUserChange={onUserChange} onLinksChange={onLinksChange} />
       )}
       {user.role === "guardian" && <GuardianSection patients={patients} toast={toast} onLinksChange={onLinksChange} />}
+
+      <InstallCard toast={toast} />
+      {user.role === "patient" && <NotifySettings toast={toast} />}
 
       <ChangePassword toast={toast} />
       <button className="btn ghost wide" onClick={onSignOut}>Sign out</button>

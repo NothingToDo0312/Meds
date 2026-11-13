@@ -6,8 +6,8 @@ import PasswordInput from "./PasswordInput";
 import ThemeToggle from "./ThemeToggle";
 import { Pill, Bell, Check } from "./Icons";
 
-export default function AuthScreen({ setup, signupOpen, onAuthed }) {
-  const [mode, setMode] = useState(setup ? "register" : "login");
+export default function AuthScreen({ setup, signupOpen, initialMode = "login", onBack, onAuthed }) {
+  const [mode, setMode] = useState(setup ? "register" : initialMode);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "patient", inviteCode: "", remember: true });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,6 +59,7 @@ export default function AuthScreen({ setup, signupOpen, onAuthed }) {
       {/* Right: the form */}
       <section className="login-panel">
         <ThemeToggle />
+        {onBack && <button type="button" className="back-link" onClick={onBack}>&larr; Back to home</button>}
         <div className="login-box">
           <h1>{title}</h1>
           <p className="muted login-sub">{subtitle}</p>

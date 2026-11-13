@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
-import { dateKey, historyStart, nowMin, safeTz, toMin } from "@/lib/client/time";
+import { dateKey, fmtTime, historyStart, nowMin, safeTz, toMin } from "@/lib/client/time";
 import { slotKey, slotsFor, withStatus } from "@/lib/client/schedule";
+import { chime, enable, onChange as onNotifyChange, permission, registerWorker, sendTest, showNotification, unlockAudio } from "@/lib/client/notify";
 import Today from "./Today";
 import Calendar from "./Calendar";
 import Meds from "./Meds";
@@ -10,14 +11,17 @@ import MedForm from "./MedForm";
 import Account from "./Account";
 import Admin from "./Admin";
 import ThemeToggle from "./ThemeToggle";
+import InstallButton from "./InstallButton";
 import { NAV_ICONS, Pill, LogOut } from "./Icons";
 
 const CHECK_MS = 20_000;
 const NUDGE_EVERY_MIN = 10; // remind again while a dose is still pending...
 const MAX_NUDGES = 3;       // ...up to this many times (due time, +10, +20)
 
-const canNotify = () => typeof Notification !== "undefined";
-const notifyAvailable = () => canNotify() && Notification.permission === "default";
+// Number of doses waiting, shown in the tab title and (where supported) on the installed app's icon.
+const setBadge = (n) => {
+  try { const p = n ? navigator.setAppBadge?.(n) : navigator.clearAppBadge?.(); p?.catch?.(() => {}); } catch { /* unsupported */ }
+};
 
 const savedKey = (userId) => `mr_patient_${userId}`;
 const readSaved = (userId) => { try { return Number(localStorage.getItem(savedKey(userId))) || null; } catch { return null; } };
@@ -40,12 +44,14 @@ export default function Main({ user, onUserChange, onSignOut }) {
   const [form, setForm] = useState(null); // null = closed, { med } = open (med null when adding)
   const [toastMsg, setToastMsg] = useState("");
   const [toastOn, setToastOn] = useState(false);
-  const [canAskNotify, setCanAskNotify] = useState(false);
+  const [perm, setPerm] = useState("unsupported"); // browser notification permission
+  const [blockedHidden, setBlockedHidden] = useState(false);
   const [, setTick] = useState(0);
 
   const data = useRef({ meds, log });
   data.current = { meds, log };
   const fired = useRef(new Set());
+  const pendingAction = useRef(null); // a Taken/Skip tapped on a notification while the app was closed
   const toastTimer = useRef();
 
   const toast = useCallback((msg) => {
@@ -77,9 +83,32 @@ export default function Main({ user, onUserChange, onSignOut }) {
 
   useEffect(() => {
     setMounted(true);
-    setCanAskNotify(isPatient && notifyAvailable());
     refreshLinks();
   }, [isPatient, refreshLinks]);
+
+  // Notification permission, service worker, and a Taken/Skip pressed on a notification that opened the app.
+  useEffect(() => {
+    const sync = () => setPerm(permission());
+    sync();
+    if (!isPatient) return onNotifyChange(sync);
+    registerWorker();
+    const q = new URLSearchParams(location.search);
+    if (q.get("dose")) {
+      const a = { action: q.get("dose"), medId: Number(q.get("med")), slot: q.get("slot") || "", date: q.get("date") || "" };
+      if ((a.action === "taken" || a.action === "skip") && a.medId && /^\d\d:\d\d$/.test(a.slot) && /^\d{4}-\d\d-\d\d$/.test(a.date))
+        pendingAction.current = a;
+      history.replaceState(null, "", location.pathname);
+    }
+    return onNotifyChange(sync);
+  }, [isPatient]);
+
+  // Browsers only allow sound after the person has touched the page once.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => { window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
+  }, []);
 
   // ---- load the viewed patient's medicines and last 7 days of doses
   useEffect(() => {
@@ -97,6 +126,16 @@ export default function Main({ user, onUserChange, onSignOut }) {
         setMeds(m);
         setLog(l);
         setLoadedFrom(from);
+
+        const pa = pendingAction.current;
+        if (pa && isPatient && patientId === user.id) {
+          pendingAction.current = null;
+          const status = pa.action === "taken" ? "taken" : "skipped";
+          try {
+            await setDoseRef.current(pa.medId, pa.slot, status, pa.date);
+            toast(status === "taken" ? "Marked as taken" : "Skipped");
+          } catch (e) { toast(e.message); }
+        }
       } catch (e) {
         if (!stale) toast(e.message || "Can't reach the server");
       }
@@ -104,34 +143,78 @@ export default function Main({ user, onUserChange, onSignOut }) {
     return () => { stale = true; };
   }, [patientId, tz, toast]);
 
-  // ---- reminders (only fire while the page is open)
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (isPatient) fireReminders();
-      setTick((t) => t + 1); // re-render so Due now / Later today stay current
-    }, CHECK_MS);
+  // ---- reminders
+  // For every dose that is due and not yet marked: an in-app toast + chime, and a system notification when the
+  // app isn't in front of the person. Repeats every NUDGE_EVERY_MIN minutes (MAX_NUDGES times in total).
+  function checkReminders() {
+    if (!isPatient) return;
+    const now = nowMin(tz);
+    const watching = document.visibilityState === "visible" && document.hasFocus();
+    let rang = false;
+    for (const { med, slot, status, date } of slotsFor(data.current.meds, data.current.log, tz)) {
+      if (status) continue;
+      const late = now - toMin(slot);
+      if (late < 0) continue;
 
-    function fireReminders() {
-      const now = nowMin(tz);
-      for (const { med, slot, status, date } of slotsFor(data.current.meds, data.current.log, tz)) {
-        if (status) continue;
-        const late = now - toMin(slot);
-        if (late < 0) continue;
+      const nudge = Math.floor(late / NUDGE_EVERY_MIN);
+      const key = `${date}|${med.id}|${slot}|${nudge}`;
+      if (nudge >= MAX_NUDGES || fired.current.has(key)) continue;
+      fired.current.add(key);
+      rang = true;
 
-        const nudge = Math.floor(late / NUDGE_EVERY_MIN);
-        const key = `${date}|${med.id}|${slot}|${nudge}`;
-        if (nudge >= MAX_NUDGES || fired.current.has(key)) continue;
-        fired.current.add(key);
-
-        toast(`Time to take ${med.name}`);
-        try {
-          if (canNotify() && Notification.permission === "granted")
-            new Notification("Time for your medicine", { body: `${med.name} · ${med.dose}` });
-        } catch { /* notifications unavailable */ }
-      }
+      toast(`Time to take ${med.name}`);
+      if (!watching)
+        showNotification({
+          title: nudge ? "Reminder: dose still pending" : "Time for your medicine",
+          body: `${med.name} \u00b7 ${med.dose} \u00b7 ${fmtTime(slot)}`,
+          tag: `dose-${date}-${med.id}-${slot}`,
+          data: { medId: med.id, slot, date, name: med.name },
+        });
     }
-    return () => clearInterval(id);
-  }, [toast, isPatient, tz]);
+    if (rang) chime();
+  }
+  const checkRef = useRef(checkReminders);
+  checkRef.current = checkReminders;
+  const setDoseRef = useRef();
+  setDoseRef.current = setDose;
+
+  // Every 20 seconds, and straight away when the person returns to the app, so a phone that was asleep catches up.
+  useEffect(() => {
+    const run = () => { checkRef.current(); setTick((t) => t + 1); }; // re-render keeps Due now / Later today current
+    const onVisible = () => { if (document.visibilityState === "visible") run(); };
+    const id = setInterval(run, CHECK_MS);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", run);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("focus", run); };
+  }, []);
+
+  // Check as soon as the schedule has loaded or changed.
+  useEffect(() => { checkRef.current(); }, [meds]);
+
+  // Taken / Skip pressed on a notification while the app is open in another tab or window.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (e) => {
+      const m = e.data;
+      if (m?.type !== "dose-action" || !isPatient) return;
+      const status = m.action === "taken" ? "taken" : "skipped";
+      setDoseRef.current(m.medId, m.slot, status, m.date)
+        .then(() => toast(`${m.name ?? "Dose"} ${status === "taken" ? "marked as taken" : "skipped"}`))
+        .catch((err) => toast(err.message));
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [isPatient, toast]);
+
+  // Tab title and app-icon badge show how many doses are waiting.
+  useEffect(() => {
+    if (!isPatient) return;
+    const now = nowMin(tz);
+    const due = slotsFor(meds, log, tz).filter((s) => !s.status && toMin(s.slot) <= now).length;
+    document.title = due ? `(${due}) Due now \u00b7 MediReminder` : "MediReminder";
+    setBadge(due);
+  });
+  useEffect(() => () => { document.title = "MediReminder"; setBadge(0); }, []);
 
   // ---- actions
   // status: "taken" | "skipped" | null (undo). Updates the UI first, rolls back on failure.
@@ -165,6 +248,12 @@ export default function Main({ user, onUserChange, onSignOut }) {
   }
 
   if (!mounted) return null;
+
+  async function turnOnNotifications() {
+    const result = await enable();
+    if (result === "granted") { await sendTest(); toast("Notifications are on"); }
+    else if (result === "denied") toast("Notifications were blocked");
+  }
 
   const needsPatient = !patientId;
   const pickPatient = (e) => { const id = Number(e.target.value); setPatientId(id); writeSaved(user.id, id); };
@@ -210,15 +299,19 @@ export default function Main({ user, onUserChange, onSignOut }) {
 
         <section className="view" hidden={tab !== "today"}>
           {needsPatient ? noPatient : (
-            <Today meds={meds} log={log} tz={tz} name={isPatient ? user.name.trim().split(" ")[0] : ""} onAct={act} banner={canAskNotify && (
-              <div className="banner">
-                <span>Get a notification when a dose is due.</span>
-                <button className="btn small"
-                  onClick={() => Notification.requestPermission().finally(() => setCanAskNotify(notifyAvailable()))}>
-                  Turn on
-                </button>
-              </div>
-            )} />
+            <Today meds={meds} log={log} tz={tz} name={isPatient ? user.name.trim().split(" ")[0] : ""} onAct={act} banner={
+              isPatient && perm === "default" ? (
+                <div className="banner">
+                  <span>Get a notification when a dose is due.</span>
+                  <button className="btn small" onClick={turnOnNotifications}>Turn on</button>
+                </div>
+              ) : isPatient && perm === "denied" && !blockedHidden ? (
+                <div className="banner">
+                  <span>Notifications are blocked in your browser, so reminders can&rsquo;t reach you. Allow them in your site settings.</span>
+                  <button className="link" onClick={() => setBlockedHidden(true)}>Dismiss</button>
+                </div>
+              ) : null
+            } />
           )}
         </section>
 
@@ -279,6 +372,7 @@ export default function Main({ user, onUserChange, onSignOut }) {
         <div className="side-foot">
           <div className="side-title side-label">Appearance</div>
           <ThemeToggle variant="sidebar" />
+          <InstallButton className="side-install" label="Install app" />
           <button type="button" className="side-signout" onClick={onSignOut} title="Sign out">
             <LogOut />
             <span className="side-label">Sign out</span>

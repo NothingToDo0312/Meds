@@ -13,6 +13,12 @@ export default function RootLayout({ children }) {
             __html: `try{var t=localStorage.getItem("mr_theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`,
           }}
         />
+        {/* Keep the browser's install prompt so the in-app Install button can use it later. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__mrInstall=e;dispatchEvent(new Event("mr:install"))})`,
+          }}
+        />
       </head>
       <body>
         {children}
