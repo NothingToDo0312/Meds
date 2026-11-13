@@ -186,3 +186,11 @@ form label.check input { display: inline-block; width: auto; margin: 0; }
 .link-form select { flex: 1; min-width: 0; }
 .danger-text { color: var(--danger); }
 nav button { font-size: 14px; }
+
+/* ---- Show/Hide password toggle ---- */
+.pw { position: relative; display: block; }
+form label .pw input { padding-right: 64px; }
+.pw-toggle {
+  position: absolute; right: 6px; top: 6px; bottom: 0; margin: auto 0; height: 32px;
+  background: none; border: 0; padding: 0 10px; color: var(--accent); font-weight: 600; font-size: .85rem; cursor: pointer;
+}

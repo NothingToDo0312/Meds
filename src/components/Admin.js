@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { deviceTimezone } from "@/lib/client/time";
+import PasswordInput from "./PasswordInput";
 
 const ROLES = ["admin", "patient", "guardian"];
 
@@ -27,7 +28,7 @@ function NewUser({ onCreated, toast }) {
       <label>Name<input value={f.name} onChange={set("name")} maxLength={60} /></label>
       <label>Email<input type="email" value={f.email} onChange={set("email")} autoComplete="off" /></label>
       <label>Password <span className="muted">(8+ characters)</span>
-        <input type="password" value={f.password} onChange={set("password")} autoComplete="new-password" />
+        <PasswordInput value={f.password} onChange={set("password")} autoComplete="new-password" />
       </label>
       <label>Role
         <select value={f.role} onChange={set("role")}>{ROLES.map((r) => <option key={r}>{r}</option>)}</select>

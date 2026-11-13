@@ -60,7 +60,7 @@ Self-hosting instead: `npm run build && npm start`.
 | Own medicines and doses | Manage | n/a | n/a |
 | Other people's medicines and doses | none | View, add, edit, delete and log doses for **linked patients** | Same, for **every patient** |
 | Reminders (toast and notification) | Yes, while the page is open | No | No |
-| Link guardians | Shares an **invite code**; can remove guardians | Enters a patient's code to link; can unlink | Links or unlinks anyone |
+| Link guardians | Shares an **invite code**; can remove guardians | Enters a patient's code to link, or **creates the patient's account** (auto-linked); can unlink | Links or unlinks anyone |
 | Manage users | none | none | Create users, change roles, reset passwords, delete |
 
 A guardian or admin picks which patient they are viewing at the top of Today and Medicines, and sees that patient's day in the **patient's timezone**.
@@ -107,6 +107,7 @@ Everything except `/api/health` and the sign-in calls needs a signed-in session.
 | PUT | /api/doses | Set one dose `{medicineId, date, slot, status}`; status is `taken`, `skipped`, or `null` to undo |
 | GET | /api/links | `{patients, guardians}` the caller can see |
 | POST | /api/links | Guardian links to a patient `{inviteCode}` |
+| POST | /api/links/patients | Guardian creates a patient account and links to it `{name, email, password, timezone?}` |
 | DELETE | /api/links/:id | Patient, guardian or admin ends a link |
 | POST | /api/links/regenerate | Patient gets a new invite code |
 | GET / POST | /api/admin/users | Admin: list / create users |

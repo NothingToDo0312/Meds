@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { deviceTimezone } from "@/lib/client/time";
+import PasswordInput from "./PasswordInput";
 
 export default function AuthScreen({ setup, signupOpen, onAuthed }) {
   const [mode, setMode] = useState(setup ? "register" : "login");
@@ -44,7 +45,7 @@ export default function AuthScreen({ setup, signupOpen, onAuthed }) {
           <input type="email" value={form.email} onChange={set("email")} autoComplete="email" required />
         </label>
         <label>Password
-          <input type="password" value={form.password} onChange={set("password")}
+          <PasswordInput value={form.password} onChange={set("password")}
             autoComplete={registering ? "new-password" : "current-password"} required />
         </label>
         {registering && <p className="muted hint">At least 8 characters.</p>}

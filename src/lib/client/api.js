@@ -46,6 +46,7 @@ export const api = {
   // guardian links
   links: () => request("/links"),
   linkByCode: (inviteCode) => request("/links", { method: "POST", body: { inviteCode } }),
+  createPatient: (data) => request("/links/patients", { method: "POST", body: data }),
   removeLink: (id) => request(`/links/${id}`, { method: "DELETE" }),
   regenerateCode: () => request("/links/regenerate", { method: "POST" }),
 
