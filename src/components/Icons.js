@@ -54,4 +54,26 @@ export const LogOut = (p) => (
   </svg>
 );
 
-export const NAV_ICONS = { today: CalendarCheck, meds: Pill, account: User, admin: Shield };
+export const CalendarDays = (p) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+  </svg>
+);
+export const Plus = (p) => (
+  <svg {...base} {...p}><path d="M12 5v14M5 12h14" /></svg>
+);
+export const ChevronLeft = (p) => (
+  <svg {...base} {...p}><path d="m15 18-6-6 6-6" /></svg>
+);
+export const ChevronRight = (p) => (
+  <svg {...base} {...p}><path d="m9 18 6-6-6-6" /></svg>
+);
+export const X = (p) => (
+  <svg {...base} {...p}><path d="M18 6 6 18M6 6l12 12" /></svg>
+);
+export const Minus = (p) => (
+  <svg {...base} {...p}><path d="M5 12h14" /></svg>
+);
+
+export const NAV_ICONS = { today: CalendarCheck, calendar: CalendarDays, meds: Pill, account: User, admin: Shield };

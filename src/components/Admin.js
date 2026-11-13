@@ -130,7 +130,7 @@ export default function Admin({ me, toast, onChanged }) {
 
   return (
     <>
-      <header><h1>Admin</h1><p className="muted">{users.length} users</p></header>
+      <header className="page-head"><div><h1>Admin</h1><p className="muted">{users.length} users</p></div></header>
 
       <div className="group-title">Users</div>
       {users.map((u) => (

@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { HttpError, unwrap, FOREIGN_KEY_VIOLATION } from "./errors";
 
-const MED_COLS = "id, name, dose, times, days, notes, patient_id";
+const MED_COLS = "id, name, dose, times, days, notes, patient_id, created_at";
 const USER_COLS = "id, name, email, password_hash, role, timezone, invite_code, created_at";
 
 export const Medicine = {

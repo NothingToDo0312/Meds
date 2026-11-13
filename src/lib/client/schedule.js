@@ -1,4 +1,4 @@
-import { dayAgo, toMin, nowMin } from "./time";
+import { dayAgo, dayKeyOf, toMin, nowMin, weekdayOf } from "./time";
 
 // log: { "YYYY-MM-DD": { "<medId>@<HH:MM>": "taken" | "skipped" } }
 export const slotKey = (medId, slot) => `${medId}@${slot}`;
@@ -49,4 +49,41 @@ export function weekAdherence(meds, log, tz) {
     }
   }
   return { due, taken };
+}
+
+
+// ---- Calendar helpers -------------------------------------------------------
+
+// Every scheduled dose on one calendar day (key = "YYYY-MM-DD"). A medicine only counts from the day it was added.
+export function slotsOn(meds, log, key, tz) {
+  const weekday = weekdayOf(key);
+  const slots = [];
+  for (const med of meds) {
+    if (!med.days.includes(weekday)) continue;
+    if (med.created_at && key < dayKeyOf(med.created_at, tz)) continue;
+    for (const slot of med.times) slots.push({ med, slot, date: key, status: log[key]?.[slotKey(med.id, slot)] ?? null });
+  }
+  return slots.sort((a, b) => a.slot.localeCompare(b.slot) || a.med.name.localeCompare(b.med.name));
+}
+
+// taken | skipped | missed (time has passed, nothing logged) | upcoming
+export function slotState(s, todayKey, now) {
+  if (s.status) return s.status;
+  return s.date < todayKey || (s.date === todayKey && toMin(s.slot) <= now) ? "missed" : "upcoming";
+}
+
+export function summarize(slots, todayKey, now) {
+  const states = slots.map((s) => slotState(s, todayKey, now));
+  const count = (k) => states.filter((x) => x === k).length;
+  return { total: slots.length, states, taken: count("taken"), skipped: count("skipped"), missed: count("missed"), upcoming: count("upcoming") };
+}
+
+// One word for how a whole day went: none | future | full | partial | missed | skipped | pending
+export function dayTone(sum, key, todayKey) {
+  if (!sum.total) return "none";
+  if (key > todayKey) return "future";
+  if (sum.taken === sum.total) return "full";
+  if (sum.taken === 0 && sum.upcoming > 0 && !sum.missed && !sum.skipped) return "pending";
+  if (sum.taken === 0 && !sum.upcoming) return sum.missed ? "missed" : "skipped";
+  return "partial";
 }

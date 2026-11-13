@@ -28,7 +28,7 @@ export default function ThemeToggle({ variant = "floating" }) {
 
   const options = [["light", "Light", Sun], ["dark", "Dark", Moon]];
   return (
-    <div className={variant === "sidebar" ? "theme-switch" : "theme-fab"} role="radiogroup" aria-label="Color theme">
+    <div className={variant === "sidebar" ? "theme-switch" : variant === "inline" ? "theme-fab theme-inline" : "theme-fab"} role="radiogroup" aria-label="Color theme">
       {options.map(([id, label, Icon]) => (
         <button key={id} type="button" role="radio" aria-checked={mode === id} aria-label={`${label} theme`} title={label}
           className={mode === id ? "on" : ""} onClick={() => pick(id)}>

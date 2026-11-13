@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
-import { dateKey, nowMin, safeTz, toMin } from "@/lib/client/time";
+import { dateKey, historyStart, nowMin, safeTz, toMin } from "@/lib/client/time";
 import { slotKey, slotsFor, withStatus } from "@/lib/client/schedule";
 import Today from "./Today";
+import Calendar from "./Calendar";
 import Meds from "./Meds";
 import MedForm from "./MedForm";
 import Account from "./Account";
@@ -35,6 +36,7 @@ export default function Main({ user, onUserChange, onSignOut }) {
   const [patientId, setPatientId] = useState(isPatient ? user.id : null);
   const [meds, setMeds] = useState([]);
   const [log, setLog] = useState({});
+  const [loadedFrom, setLoadedFrom] = useState("1970-01-01"); // first day of dose history we have
   const [form, setForm] = useState(null); // null = closed, { med } = open (med null when adding)
   const [toastMsg, setToastMsg] = useState("");
   const [toastOn, setToastOn] = useState(false);
@@ -87,12 +89,14 @@ export default function Main({ user, onUserChange, onSignOut }) {
     let stale = false;
     (async () => {
       try {
-        const [m, rows] = await Promise.all([api.listMeds(patientId), api.listDoses(patientId, dateKey(tz, 6))]);
+        const from = historyStart(tz); // this month and last month, for the calendar
+        const [m, rows] = await Promise.all([api.listMeds(patientId), api.listDoses(patientId, from)]);
         if (stale) return;
         const l = {};
         rows.forEach((r) => { (l[r.date] ||= {})[slotKey(r.medicine_id, r.slot)] = r.status; });
         setMeds(m);
         setLog(l);
+        setLoadedFrom(from);
       } catch (e) {
         if (!stale) toast(e.message || "Can't reach the server");
       }
@@ -184,6 +188,7 @@ export default function Main({ user, onUserChange, onSignOut }) {
 
   const tabs = [
     ["today", "Today"],
+    ["calendar", "Calendar"],
     ["meds", "Medicines"],
     ["account", "Account"],
     ...(user.role === "admin" ? [["admin", "Admin"]] : []),
@@ -191,12 +196,21 @@ export default function Main({ user, onUserChange, onSignOut }) {
 
   return (
     <div className="app">
+      <div className="topbar">
+        <div className="brand">
+          <span className="brand-mark"><Pill width={20} height={20} /></span>
+          <span className="brand-name">MediReminder</span>
+        </div>
+        <ThemeToggle variant="inline" />
+        <button type="button" className="topbar-out" onClick={onSignOut}><LogOut width={16} height={16} /> Sign out</button>
+      </div>
+
       <main>
-        {(tab === "today" || tab === "meds") && viewing}
+        {(tab === "today" || tab === "calendar" || tab === "meds") && viewing}
 
         <section className="view" hidden={tab !== "today"}>
           {needsPatient ? noPatient : (
-            <Today meds={meds} log={log} tz={tz} onAct={act} banner={canAskNotify && (
+            <Today meds={meds} log={log} tz={tz} name={isPatient ? user.name.trim().split(" ")[0] : ""} onAct={act} banner={canAskNotify && (
               <div className="banner">
                 <span>Get a notification when a dose is due.</span>
                 <button className="btn small"
@@ -207,6 +221,12 @@ export default function Main({ user, onUserChange, onSignOut }) {
             )} />
           )}
         </section>
+
+        {tab === "calendar" && (
+          <section className="view">
+            {needsPatient ? noPatient : <Calendar meds={meds} log={log} tz={tz} loadedFrom={loadedFrom} />}
+          </section>
+        )}
 
         <section className="view" hidden={tab !== "meds"}>
           {needsPatient ? noPatient : (
@@ -265,6 +285,18 @@ export default function Main({ user, onUserChange, onSignOut }) {
           </button>
         </div>
       </aside>
+
+      <nav className="tabbar" aria-label="Main menu (mobile)">
+        {tabs.map(([id, label]) => {
+          const Icon = NAV_ICONS[id];
+          return (
+            <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)} aria-current={tab === id ? "page" : undefined}>
+              {Icon && <Icon width={22} height={22} />}
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       {form && (
         <MedForm key={form.med?.id ?? "new"} med={form.med} onSave={saveMedicine}

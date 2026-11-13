@@ -54,3 +54,21 @@ export function fmtDays(days) {
 export function todayLabel(tz) {
   return new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: tz });
 }
+
+// Calendar day (YYYY-MM-DD) of an ISO timestamp, in `tz`.
+export function dayKeyOf(iso, tz) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  } catch { return "1970-01-01"; }
+}
+
+// First day of last month in `tz`: how far back the app loads dose history (enough for this month and the previous one).
+export function historyStart(tz) {
+  const [y, m] = dateKey(tz).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10);
+}
+
+export const weekdayOf = (key) => new Date(`${key}T00:00:00Z`).getUTCDay();
+
+export const longDate = (key) =>
+  new Date(`${key}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });

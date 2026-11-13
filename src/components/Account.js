@@ -200,10 +200,11 @@ export default function Account({ user, guardians, patients, toast, onUserChange
 
   return (
     <>
-      <header><h1>Account</h1></header>
+      <header className="page-head"><div><h1>Account</h1><p className="muted">Your profile, links and security.</p></div></header>
 
       <div className="card">
-        <div className="row-between">
+        <div className="profile">
+          <span className="avatar lg" aria-hidden="true">{(user.name || "?").trim().charAt(0).toUpperCase()}</span>
           <div className="info"><div className="name">{user.name}</div><div className="muted">{user.email}</div></div>
           <span className="chip">{user.role}</span>
         </div>
