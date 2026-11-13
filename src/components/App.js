@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import AuthScreen from "./AuthScreen";
 import Main from "./Main";
+import ThemeToggle from "./ThemeToggle";
 
 // Decides between the sign-in screen and the app.
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
   if (status.error)
     return (
       <div className="auth">
+        <ThemeToggle />
         <h1>MediReminder</h1>
         <p className="error" role="alert">{status.error}</p>
         <button className="btn" onClick={refresh}>Try again</button>

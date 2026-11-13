@@ -1,5 +1,4 @@
 import "./globals.css";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export const metadata = { title: "MediReminder", description: "Medicine reminders and dose tracking" };
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f766e" };
@@ -17,7 +16,6 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         {children}
-        <ThemeToggle />
       </body>
     </html>
   );

@@ -8,6 +8,8 @@ import Meds from "./Meds";
 import MedForm from "./MedForm";
 import Account from "./Account";
 import Admin from "./Admin";
+import ThemeToggle from "./ThemeToggle";
+import { NAV_ICONS, Pill, LogOut } from "./Icons";
 
 const CHECK_MS = 20_000;
 const NUDGE_EVERY_MIN = 10; // remind again while a dose is still pending...
@@ -226,11 +228,43 @@ export default function Main({ user, onUserChange, onSignOut }) {
         )}
       </main>
 
-      <nav>
-        {tabs.map(([id, label]) => (
-          <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{label}</button>
-        ))}
-      </nav>
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark"><Pill width={20} height={20} /></span>
+          <span className="brand-name side-label">MediReminder</span>
+        </div>
+
+        <div className="side-user" title={`${user.name} (${user.role})`}>
+          <span className="avatar" aria-hidden="true">{(user.name || "?").trim().charAt(0).toUpperCase()}</span>
+          <span className="side-label side-user-text">
+            <b>{user.name}</b>
+            <span className="muted">{user.role === "admin" ? "Admin" : user.role === "guardian" ? "Guardian" : "Patient"}</span>
+          </span>
+        </div>
+
+        <nav aria-label="Main menu">
+          <div className="side-title side-label">Menu</div>
+          {tabs.map(([id, label]) => {
+            const Icon = NAV_ICONS[id];
+            return (
+              <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)} title={label}
+                aria-current={tab === id ? "page" : undefined}>
+                {Icon && <Icon />}
+                <span className="side-label">{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="side-foot">
+          <div className="side-title side-label">Appearance</div>
+          <ThemeToggle variant="sidebar" />
+          <button type="button" className="side-signout" onClick={onSignOut} title="Sign out">
+            <LogOut />
+            <span className="side-label">Sign out</span>
+          </button>
+        </div>
+      </aside>
 
       {form && (
         <MedForm key={form.med?.id ?? "new"} med={form.med} onSave={saveMedicine}
