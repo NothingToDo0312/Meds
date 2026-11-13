@@ -1,29 +1,30 @@
-// Theme: "system" (follow the device), "light" or "dark". Stored in this browser only.
+// Two themes: "light" and "dark". Until the person picks one, the device setting is followed.
+// A saved choice lives in this browser only.
 const KEY = "mr_theme";
-export const THEMES = ["system", "light", "dark"];
 
-export function getTheme() {
+export function savedTheme() {
   try {
     const t = localStorage.getItem(KEY);
-    return THEMES.includes(t) ? t : "system";
+    return t === "light" || t === "dark" ? t : null;
   } catch {
-    return "system";
+    return null;
   }
 }
 
+export const systemTheme = () =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+// The theme actually showing right now.
+export const currentTheme = () => savedTheme() || systemTheme();
+
 export function setTheme(mode) {
-  try {
-    if (mode === "system") localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, mode);
-  } catch { /* storage unavailable: applies for this visit only */ }
+  try { localStorage.setItem(KEY, mode); } catch { /* storage unavailable: applies for this visit only */ }
   applyTheme(mode);
 }
 
 export function applyTheme(mode) {
-  const root = document.documentElement;
-  if (mode === "light" || mode === "dark") root.dataset.theme = mode;
-  else delete root.dataset.theme;
-
-  const dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", dark ? "#0e1312" : "#0f766e"));
+  document.documentElement.dataset.theme = mode;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) =>
+    m.setAttribute("content", mode === "dark" ? "#0e1312" : "#0f766e")
+  );
 }

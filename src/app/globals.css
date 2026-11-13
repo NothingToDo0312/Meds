@@ -249,12 +249,19 @@ dialog::backdrop { background: rgb(0 0 0 / .5); backdrop-filter: blur(2px); }
 
 /* Sign-in screen */
 .auth form { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
-.auth-top { display: flex; justify-content: flex-end; margin-bottom: 28px; }
 .auth h1 { font-size: 30px; }
 
-/* Theme switch (Auto / Light / Dark) */
-.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; }
-.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.seg button:hover { color: var(--ink); }
-.seg button.on { background: var(--accent); color: var(--accent-ink); }
-.card .seg { margin-top: 4px; }
+/* Theme switch: floating sun / moon, bottom left (sits above the tab bar when there is one) */
+.theme-fab {
+  position: fixed; z-index: 20; left: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow);
+}
+body:not(:has(nav)) .theme-fab { bottom: calc(16px + env(safe-area-inset-bottom)); }
+.theme-fab button {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--muted);
+  transition: background-color .15s, color .15s;
+}
+.theme-fab button:hover { color: var(--ink); }
+.theme-fab button.on { background: var(--accent); color: var(--accent-ink); }
