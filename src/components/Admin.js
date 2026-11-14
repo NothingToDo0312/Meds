@@ -137,7 +137,7 @@ export default function Admin({ me, toast, onChanged }) {
         <div className="card user" key={u.id}>
           <div className="row-between">
             <div className="info"><div className="name">{u.name}{u.id === me.id && " (you)"}</div><div className="muted">{u.email}</div></div>
-            <select aria-label={`Role for ${u.name}`} value={u.role} onChange={(e) => changeRole(u, e.target.value)}>
+            <select aria-label={`Role for ${u.name}`} value={u.role} disabled={u.role === "admin"} title={u.role === "admin" ? "An admin's role can't be changed" : undefined} onChange={(e) => changeRole(u, e.target.value)}>
               {ROLES.map((r) => <option key={r}>{r}</option>)}
             </select>
           </div>
