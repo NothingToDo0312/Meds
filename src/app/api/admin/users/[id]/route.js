@@ -1,55 +1,155 @@
-import { route, readJson, HttpError } from "@/lib/server/errors";
-import { Link, Medicine, Session, User } from "@/lib/server/models";
-import { hashPassword, publicUser, requireRole } from "@/lib/server/auth";
-import { newInviteCode } from "@/lib/server/accounts";
-import { validateId, validateName, validatePassword, validateRole } from "@/lib/server/validators";
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/client/api";
+import { deviceTimezone } from "@/lib/client/time";
+import PasswordInput from "./PasswordInput";
 
-export const dynamic = "force-dynamic";
+const ROLES = ["admin", "patient", "guardian"];
 
-async function loadTarget(params) {
-  const target = await User.findById(validateId((await params).id, "user id"));
-  if (!target) throw new HttpError(404, "User not found.");
-  return target;
+function NewUser({ onCreated, toast }) {
+  const [f, setF] = useState({ name: "", email: "", password: "", role: "patient" });
+  const [error, setError] = useState("");
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+
+  async function submit(e) {
+    e.preventDefault();
+    setError("");
+    try {
+      await api.adminCreateUser({ ...f, timezone: deviceTimezone() });
+      setF({ name: "", email: "", password: "", role: f.role });
+      toast("User created");
+      onCreated();
+    } catch (err) { setError(err.message); }
+  }
+
+  return (
+    <form className="card" onSubmit={submit} noValidate>
+      <h3>Add a user</h3>
+      <label>Name<input value={f.name} onChange={set("name")} maxLength={60} /></label>
+      <label>Email<input type="email" value={f.email} onChange={set("email")} autoComplete="off" /></label>
+      <label>Password <span className="muted">(8+ characters)</span>
+        <PasswordInput value={f.password} onChange={set("password")} autoComplete="new-password" />
+      </label>
+      <label>Role
+        <select value={f.role} onChange={set("role")}>{ROLES.map((r) => <option key={r}>{r}</option>)}</select>
+      </label>
+      <p className="error" role="alert">{error}</p>
+      <button className="btn small" type="submit">Create user</button>
+    </form>
+  );
 }
 
-// Rename, reset password, or change role.
-export const PATCH = route(async (req, { params }) => {
-  await requireRole("admin");
-  const target = await loadTarget(params);
-  const body = await readJson(req);
-  const patch = {};
+function Links({ users, links, reload, toast }) {
+  const patients = users.filter((u) => u.role === "patient");
+  const guardians = users.filter((u) => u.role === "guardian");
+  const [patientId, setPatientId] = useState("");
+  const [guardianId, setGuardianId] = useState("");
 
-  if (body.name !== undefined) patch.name = validateName(body.name);
-  if (body.password !== undefined) patch.password_hash = await hashPassword(validatePassword(body.password));
-
-  const roleChange = body.role !== undefined && body.role !== target.role;
-  if (roleChange) {
-    const role = validateRole(body.role, { allowAdmin: true });
-    if (target.role === "admin" && (await User.countAdmins()) <= 1)
-      throw new HttpError(409, "There must be at least one admin.");
-    if (target.role === "patient" && (await Medicine.countForPatient(target.id)) > 0)
-      throw new HttpError(409, "Delete this patient's medicines before changing their role.");
-    patch.role = role;
-    patch.invite_code = role === "patient" ? target.invite_code || (await newInviteCode()) : null;
+  async function add(e) {
+    e.preventDefault();
+    try {
+      await api.adminAddLink(Number(patientId), Number(guardianId));
+      toast("Linked");
+      reload();
+    } catch (err) { toast(err.message); }
   }
 
-  const updated = Object.keys(patch).length ? await User.update(target.id, patch) : target;
-
-  if (roleChange) {
-    if (target.role === "patient") await Link.removeForPatient(target.id);
-    if (target.role === "guardian") await Link.removeForGuardian(target.id);
+  async function remove(l) {
+    try {
+      await api.removeLink(l.id);
+      toast("Link removed");
+      reload();
+    } catch (err) { toast(err.message); }
   }
-  if (patch.password_hash) await Session.removeForUser(target.id);
 
-  return Response.json(publicUser(updated));
-});
+  return (
+    <div className="card">
+      <h3>Guardian links</h3>
+      {links.length ? links.map((l) => (
+        <div className="person" key={l.id}>
+          <div className="info"><div className="name">{l.guardianName}</div><div className="muted">looks after {l.patientName}</div></div>
+          <button className="link" onClick={() => remove(l)}>Remove</button>
+        </div>
+      )) : <p className="muted">No links yet.</p>}
 
-export const DELETE = route(async (req, { params }) => {
-  const admin = await requireRole("admin");
-  const target = await loadTarget(params);
-  if (target.id === admin.id) throw new HttpError(409, "You can't delete your own account.");
-  if (target.role === "admin" && (await User.countAdmins()) <= 1)
-    throw new HttpError(409, "There must be at least one admin.");
-  await User.remove(target.id); // sessions, links, medicines and dose logs cascade
-  return new Response(null, { status: 204 });
-});
+      <form className="row link-form" onSubmit={add}>
+        <select aria-label="Guardian" value={guardianId} onChange={(e) => setGuardianId(e.target.value)} required>
+          <option value="">Guardian…</option>
+          {guardians.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </select>
+        <select aria-label="Patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} required>
+          <option value="">Patient…</option>
+          {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <button className="btn small" type="submit" disabled={!patientId || !guardianId}>Link</button>
+      </form>
+    </div>
+  );
+}
+
+export default function Admin({ me, toast, onChanged }) {
+  const [users, setUsers] = useState([]);
+  const [links, setLinks] = useState([]);
+
+  const reload = useCallback(async () => {
+    try {
+      const [u, l] = await Promise.all([api.adminUsers(), api.adminLinks()]);
+      setUsers(u);
+      setLinks(l);
+      onChanged?.(); // the patient list used by the Today / Medicines tabs may have changed
+    } catch (e) { toast(e.message); }
+  }, [toast, onChanged]);
+
+  useEffect(() => { reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function changeRole(u, role) {
+    try {
+      await api.adminUpdateUser(u.id, { role });
+      toast(`${u.name} is now ${role}`);
+    } catch (e) { toast(e.message); }
+    reload();
+  }
+
+  async function resetPassword(u) {
+    const password = prompt(`New password for ${u.name} (8+ characters):`);
+    if (!password) return;
+    try {
+      await api.adminUpdateUser(u.id, { password });
+      toast("Password reset. They were signed out everywhere.");
+    } catch (e) { toast(e.message); }
+  }
+
+  async function remove(u) {
+    if (!confirm(`Delete ${u.name}? Their medicines and history are deleted too.`)) return;
+    try {
+      await api.adminDeleteUser(u.id);
+      toast(`${u.name} deleted`);
+    } catch (e) { toast(e.message); }
+    reload();
+  }
+
+  return (
+    <>
+      <header className="page-head"><div><h1>Admin</h1><p className="muted">{users.length} users</p></div></header>
+
+      <div className="group-title">Users</div>
+      {users.map((u) => (
+        <div className="card user" key={u.id}>
+          <div className="row-between">
+            <div className="info"><div className="name">{u.name}{u.id === me.id && " (you)"}</div><div className="muted">{u.email}</div></div>
+            <select aria-label={`Role for ${u.name}`} value={u.role} disabled={u.role === "admin"} title={u.role === "admin" ? "An admin's role can't be changed" : undefined} onChange={(e) => changeRole(u, e.target.value)}>
+              {ROLES.map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="row">
+            <button className="link" onClick={() => resetPassword(u)}>Reset password</button>
+            {u.id !== me.id && <button className="link danger-text" onClick={() => remove(u)}>Delete</button>}
+          </div>
+        </div>
+      ))}
+
+      <Links users={users} links={links} reload={reload} toast={toast} />
+      <NewUser onCreated={reload} toast={toast} />
+    </>
+  );
+}
