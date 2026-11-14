@@ -45,7 +45,7 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font: 15px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -128,15 +128,17 @@ form label .pw input { margin-top: 0; padding-right: 66px; }
 .card .muted.help { margin: 12px 0 6px; }
 .card .btn.small { margin-top: 4px; }
 .row-between { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.row-between > .info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.row-between > select, .row-between > .btn { flex: none; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row .link { margin-right: 8px; }
 .link-form { margin-top: 12px; }
 .link-form select { flex: 1; min-width: 0; }
 .profile { display: flex; align-items: center; gap: 14px; }
-.profile .info { flex: 1; min-width: 0; }
+.profile .info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .profile .name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
 .person { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
-.person .info { flex: 1; min-width: 0; }
+.person .info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .person .name { font-weight: 600; overflow-wrap: anywhere; }
 .chip { padding: 3px 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-transform: capitalize; }
 .code { margin: 8px 0; font: 800 24px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; }
@@ -324,7 +326,7 @@ main { grid-column: 2; grid-row: 1; width: 100%; max-width: 1000px; margin: 0 au
 
 /* ---- Form dialog ---- */
 dialog {
-  width: min(92vw, 460px); max-height: 90vh; padding: 22px; background: var(--surface); color: var(--ink);
+  width: min(calc(100vw - 24px), 460px); max-height: 90vh; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; padding: 22px; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 24px 60px rgb(0 0 0 / .25);
 }
 dialog::backdrop { background: rgb(8 24 22 / .5); backdrop-filter: blur(2px); }
@@ -334,8 +336,8 @@ dialog h2 { margin-bottom: 16px; font-size: 20px; font-weight: 800; }
 .time-row button { flex: none; width: 40px; background: var(--field); border: 0; border-radius: 10px; color: var(--muted); font-size: 18px; }
 .time-row button:hover { color: var(--danger); }
 .days { display: flex; gap: 6px; }
-.days label { margin: 0; flex: 1; }
-.days input { position: absolute; opacity: 0; }
+.days label { position: relative; margin: 0; flex: 1; }
+.days input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
 .days span {
   display: block; padding: 9px 0; text-align: center; font-size: 13px; font-weight: 700;
   background: var(--field); border-radius: 10px; color: var(--muted); cursor: pointer; transition: background-color .15s, color .15s;
@@ -389,7 +391,7 @@ dialog h2 { margin-bottom: 16px; font-size: 20px; font-weight: 800; }
 .login-foot { font-size: 12px; font-weight: 600; color: rgb(255 255 255 / .8); }
 
 .login-panel { position: relative; display: grid; place-items: center; padding: 40px 24px; background: var(--bg); }
-.login-panel .theme-fab { left: auto; right: 16px; top: 16px; bottom: auto; }
+.login-panel .theme-fab { position: absolute; left: auto; right: 16px; top: 16px; bottom: auto; }
 .login-box { width: 100%; max-width: 340px; }
 .login-box h1 { font-size: 24px; }
 .login-sub { margin: 2px 0 18px; font-size: 13px; }
@@ -410,12 +412,14 @@ dialog h2 { margin-bottom: 16px; font-size: 20px; font-weight: 800; }
 }
 
 @media (max-width: 860px) {
-  .login { grid-template-columns: 1fr; }
+  .login { grid-template-columns: minmax(0, 1fr); }
   .login-hero { padding: 24px 24px 28px; gap: 18px; }
   .login-pitch { padding-top: 0; margin: 0; }
   .login-pitch h2 { margin-bottom: 8px; font-size: 26px; }
   .login-sample, .login-foot { display: none; }
-  .login-panel { align-items: start; padding: 28px 20px 40px; }
+  .login-panel { align-items: start; align-content: start; padding: 16px 20px 40px; }
+  .login-panel .back-link { position: static; justify-self: start; margin: 0 0 8px -4px; padding: 10px 4px; }
+  .login-panel .theme-fab { top: 12px; right: 12px; }
   .login-box { max-width: 420px; }
 }
 
@@ -590,7 +594,7 @@ html { scroll-behavior: smooth; }
   .lp-menu a, .lp-menu button { padding: 12px 8px; background: none; border: 0; border-radius: 10px; text-align: left; font-size: 16px; font-weight: 600; color: var(--ink); }
   .lp-menu a:hover, .lp-menu button:hover { background: var(--accent-soft); }
   .lp-hero { padding: 28px 20px 120px; }
-  .lp-hero-in { grid-template-columns: 1fr; gap: 8px; }
+  .lp-hero-in { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .lp-copy { text-align: center; }
   .lp-deco { display: none; }
   .lp-lead { margin-left: auto; margin-right: auto; font-size: 19px; }
@@ -598,7 +602,7 @@ html { scroll-behavior: smooth; }
   .lp-tile { align-items: center; text-align: center; }
   .lp-art-wrap { max-width: 460px; margin: 0 auto; }
   .lp-section { padding: 64px 20px; }
-  .lp-section-in { grid-template-columns: 1fr; gap: 32px; }
+  .lp-section-in { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .lp-section.alt .lp-section-copy { order: 0; }
 }
 @media (max-width: 560px) {
@@ -616,8 +620,7 @@ html { scroll-behavior: smooth; }
   .lp-visual { padding: 14px; border-radius: 20px; }
   .lp-visual .dose-actions { width: auto; }
   .lp-visual .dose { flex-wrap: nowrap; }
-  .back-link { top: 14px; left: 16px; }
-}
+  }
 
 /* The app's <main> frame must not constrain the landing page */
 .lp main { grid-column: auto; max-width: none; margin: 0; padding: 0; }
@@ -661,3 +664,58 @@ html { scroll-behavior: smooth; }
 @media (max-width: 760px) { .side-install { display: none; } }
 .lp-signin, .lp-pill { white-space: nowrap; }
 @media (max-width: 1180px) { .lp-nav-in { gap: 12px; padding-left: 20px; padding-right: 20px; } .lp-links a { padding: 8px 10px; } }
+
+/* =====================================================================
+   Phone fixes
+   ===================================================================== */
+@media (max-width: 760px) {
+  /* 16px fields: iOS Safari zooms the whole page in when a smaller field is focused. */
+  form label input, form label select, .time-row input, .viewing select, .row select, .user select { font-size: 16px; }
+
+  /* Comfortable touch targets */
+  .btn.small { min-height: 40px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .time-row button { width: 44px; }
+  .link { padding: 8px 0; }
+  .tabbar button { min-height: 52px; }
+
+  /* Medicine form: Save / Cancel stay visible while the fields scroll */
+  dialog { padding: 18px; border-radius: 18px; }
+  dialog .actions {
+    position: sticky; bottom: -18px; z-index: 1; margin: 8px -18px -18px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--line);
+  }
+
+  /* Top bar must never overlap itself */
+  .topbar .theme-inline { flex: none; }
+  .topbar .brand-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-out { flex: none; white-space: nowrap; }
+}
+
+@media (max-width: 560px) {
+  /* Sign-in: shorter banner so the form is on screen straight away */
+  .login-hero { padding: 18px 20px 20px; gap: 12px; }
+  .login-pitch p { display: none; }
+  .login-pitch h2 { margin-bottom: 0; font-size: 22px; }
+}
+
+@media (max-width: 400px) {
+  /* Landing header: brand + Get Started + menu fit on one line */
+  .lp-brand { min-width: 0; }
+  .lp-nav-cta { flex: none; }
+  .lp-wordmark { gap: 8px; font-size: 18px; }
+  .lp-wordmark svg { width: 30px; height: 30px; }
+  .lp-pill { padding: 9px 13px; font-size: 13px; }
+  .lp-burger { width: 38px; height: 38px; }
+}
+
+@media (max-width: 350px) {
+  .topbar .brand-name { display: none; }
+  .lp-nav-in { padding-left: 12px; padding-right: 12px; }
+  .lp-wordmark { font-size: 16px; }
+  .lp-wordmark svg { width: 26px; height: 26px; }
+  .lp-pill { padding: 8px 10px; font-size: 12px; }
+  .stats { gap: 8px; }
+  .stat { padding: 12px; }
+  main { padding-left: 12px; padding-right: 12px; }
+}
